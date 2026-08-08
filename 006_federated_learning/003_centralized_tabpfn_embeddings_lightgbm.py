@@ -33,6 +33,7 @@ PROJECT_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_FOR_IMPORTS) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_FOR_IMPORTS))
 
+from utils._fairness_metrics import fairness_gap, group_balanced_accuracy, metric_variance  # noqa: E402
 from utils.federated_lightgbm_runner import (  # noqa: E402
     PROJECT_ROOT,
     load_base_module,
@@ -80,31 +81,6 @@ def summarize_dicts(dicts: list[dict | None]) -> dict | None:
         key: summarize_numeric([value.get(key) for value in dicts if value is not None and key in value])
         for key in sorted(keys)
     }
-
-
-def group_balanced_accuracy(y_true, y_pred, groups: list[str]) -> dict[str, float | None]:
-    frame = pd.DataFrame({"y_true": y_true, "y_pred": y_pred, "group": groups})
-    values: dict[str, float | None] = {}
-    for group, part in frame.groupby("group"):
-        if part["y_true"].nunique() < 2:
-            values[str(group)] = None
-        else:
-            values[str(group)] = float(balanced_accuracy_score(part["y_true"], part["y_pred"]))
-    return values
-
-
-def metric_variance(values: dict[str, float | None] | None) -> float | None:
-    if not values:
-        return None
-    numeric = [float(value) for value in values.values() if value is not None and not pd.isna(value)]
-    return float(np.var(numeric)) if len(numeric) > 1 else None
-
-
-def fairness_gap(values: dict[str, float | None] | None) -> float | None:
-    if not values:
-        return None
-    numeric = [float(value) for value in values.values() if value is not None and not pd.isna(value)]
-    return float(max(numeric) - min(numeric)) if len(numeric) > 1 else None
 
 
 def build_client_splits(base, feature_dataset, y: np.ndarray, args):

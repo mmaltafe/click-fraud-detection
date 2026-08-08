@@ -43,6 +43,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils._env import VALID_DATASETS, MISSING, PRIMARY_METRIC  # noqa: E402
+from utils._fairness_metrics import fold_metrics  # noqa: E402
 
 BASE_SCRIPT = PROJECT_ROOT / "005_tabpfn" / "000_fine_tune_head.py"
 
@@ -301,25 +302,6 @@ def best_embedding_logistic(
     if best_model is None or best_scores is None:
         raise ValueError("Could not train embedding logistic calibration model")
     return best_model, best_c, best_scores
-
-
-def fold_metrics(
-    y_test: np.ndarray,
-    y_pred: np.ndarray,
-    labels: np.ndarray,
-    class_names: list[str],
-) -> dict[str, Any]:
-    recall_values = recall_score(y_test, y_pred, labels=labels, average=None, zero_division=0)
-    return {
-        "balanced_accuracy": float(balanced_accuracy_score(y_test, y_pred)),
-        "macro_f1": float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
-        "weighted_f1": float(f1_score(y_test, y_pred, average="weighted", zero_division=0)),
-        "mcc": float(matthews_corrcoef(y_test, y_pred)),
-        "recall_by_class": {
-            str(class_name): float(value)
-            for class_name, value in zip(class_names, recall_values)
-        },
-    }
 
 
 def evaluate_campaign_threshold(

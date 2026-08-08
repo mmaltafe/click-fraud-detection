@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 import warnings
@@ -45,6 +44,13 @@ from utils._campaigns import (
     campaign_kfold_splits,
     cap_rows_by_campaign,
     subset_feature_dataset,
+)
+from utils._fairness_metrics import (  # noqa: E402
+    extract_groups,
+    fairness_gap,
+    group_balanced_accuracy,
+    metric_variance,
+    stratified_split_indices,
 )
 from utils._feature_datasets import FeatureDataset, discover_feature_datasets  # noqa: E402
 from utils._resume import add_resume_metadata, base_config, completed_keys, config_hash, load_existing_results, result_key, save_results
@@ -116,17 +122,6 @@ def dense_array(X, max_dense_cells: int = 20_000_000) -> np.ndarray:
             raise MemoryError(f"Refusing to densify sparse matrix with {cells} cells")
         return X.toarray().astype(np.float32, copy=False)
     return np.asarray(X, dtype=np.float32)
-
-
-def stratified_split_indices(y: np.ndarray, test_size: float, random_state: int):
-    class_counts = pd.Series(y).value_counts()
-    stratify = y if len(class_counts) > 1 and class_counts.min() >= 2 else None
-    return train_test_split(
-        np.arange(len(y)),
-        test_size=test_size,
-        random_state=random_state,
-        stratify=stratify,
-    )
 
 
 def model_parameters(model: nn.Module) -> list[np.ndarray]:
@@ -225,46 +220,6 @@ def predict(model: nn.Module, X: np.ndarray) -> np.ndarray:
     with torch.no_grad():
         logits = model(torch.tensor(X, dtype=torch.float32))
         return torch.argmax(logits, dim=1).cpu().numpy()
-
-
-def group_balanced_accuracy(y_true, y_pred, groups: pd.Series | None) -> dict[str, float] | None:
-    if groups is None:
-        return None
-    values: dict[str, float] = {}
-    frame = pd.DataFrame({"y_true": y_true, "y_pred": y_pred, "group": groups.astype(str).values})
-    for group, part in frame.groupby("group"):
-        if len(part["y_true"].unique()) < 2:
-            values[str(group)] = None
-            continue
-        values[str(group)] = float(balanced_accuracy_score(part["y_true"], part["y_pred"]))
-    return values
-
-
-def metric_variance(values: dict[str, float] | None) -> float | None:
-    if not values:
-        return None
-    numeric = [value for value in values.values() if value is not None and not math.isnan(value)]
-    if len(numeric) < 2:
-        return None
-    return float(np.var(numeric))
-
-
-def fairness_gap(values: dict[str, float] | None) -> float | None:
-    if not values:
-        return None
-    numeric = [value for value in values.values() if value is not None and not math.isnan(value)]
-    if len(numeric) < 2:
-        return None
-    return float(max(numeric) - min(numeric))
-
-
-def extract_groups(feature_dataset: FeatureDataset, test_idx: np.ndarray):
-    if feature_dataset.row_index is None or len(feature_dataset.row_index) != len(feature_dataset.target):
-        return None, None
-    row_index = feature_dataset.row_index.iloc[test_idx].reset_index(drop=True)
-    campaign = row_index["campaign"] if "campaign" in row_index.columns else None
-    traffic_source = row_index["traffic_source"] if "traffic_source" in row_index.columns else None
-    return campaign, traffic_source
 
 
 def evaluate_federated(

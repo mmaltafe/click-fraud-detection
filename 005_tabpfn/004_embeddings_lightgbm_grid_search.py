@@ -30,7 +30,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import balanced_accuracy_score, f1_score, matthews_corrcoef, recall_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
@@ -39,6 +38,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils._env import VALID_DATASETS, MISSING, PRIMARY_METRIC  # noqa: E402
+from utils._fairness_metrics import fold_metrics  # noqa: E402
 
 BASE_SCRIPT = PROJECT_ROOT / "005_tabpfn" / "000_fine_tune_head.py"
 STACKING_SCRIPT = PROJECT_ROOT / "005_tabpfn" / "003_stacking_meta_classifier.py"
@@ -483,20 +483,6 @@ def prepare_embedding_folds(
             }
         )
     return folds, split_strategy, effective_folds
-
-
-def fold_metrics(y_test: np.ndarray, y_pred: np.ndarray, labels: np.ndarray, class_names: list[str]) -> dict[str, Any]:
-    recall_values = recall_score(y_test, y_pred, labels=labels, average=None, zero_division=0)
-    return {
-        "balanced_accuracy": float(balanced_accuracy_score(y_test, y_pred)),
-        "macro_f1": float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
-        "weighted_f1": float(f1_score(y_test, y_pred, average="weighted", zero_division=0)),
-        "mcc": float(matthews_corrcoef(y_test, y_pred)),
-        "recall_by_class": {
-            str(class_name): float(value)
-            for class_name, value in zip(class_names, recall_values)
-        },
-    }
 
 
 def evaluate_lightgbm_from_folds(base, feature_dataset, campaign_id: str, folds: list[dict], split_strategy: str, effective_folds: int, lightgbm_params: dict, tabpfn_params: dict, meta_train_size: float, dataset: str) -> dict:

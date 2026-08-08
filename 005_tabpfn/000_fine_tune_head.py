@@ -37,7 +37,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from sklearn.metrics import balanced_accuracy_score, f1_score, matthews_corrcoef, recall_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
@@ -57,6 +56,7 @@ from utils._campaigns import (  # noqa: E402
     cap_rows_by_campaign,
     subset_feature_dataset,
 )
+from utils._fairness_metrics import communication_cost, fold_metrics  # noqa: E402
 from utils._resume import add_resume_metadata, base_config, config_hash, load_existing_results, save_results  # noqa: E402
 
 
@@ -519,12 +519,6 @@ def extract_tabpfn_embeddings(classifier, X_train, y_train, X_test) -> tuple[np.
         )
 
 
-def communication_cost(X) -> int:
-    if sparse.issparse(X):
-        return int(X.data.nbytes + X.indices.nbytes + X.indptr.nbytes)
-    return int(np.asarray(X).nbytes)
-
-
 def prepare_campaign_embedding_folds(feature_dataset, campaign_id: str, factory, args: Namespace, best: BestTabPFNConfig):
     y_text = feature_dataset.target["attack_type"].fillna(MISSING).astype(str).to_numpy()
     if len(np.unique(y_text)) < 2:
@@ -606,7 +600,6 @@ def evaluate_campaign_head_from_embeddings(
         elapsed = fit_elapsed + float(fold_data.get("embedding_seconds") or 0.0)
 
         labels = np.arange(n_classes)
-        recall_values = recall_score(y_test, y_pred, labels=labels, average=None, zero_division=0)
         fold_results.append(
             {
                 "n_train": int(len(y_train)),
@@ -615,14 +608,7 @@ def evaluate_campaign_head_from_embeddings(
                 "n_test_original": int(fold_data["original_test_rows"]),
                 "cpu_train_sampled": bool(fold_data["cpu_train_sampled"]),
                 "cpu_test_sampled": bool(fold_data["cpu_test_sampled"]),
-                "balanced_accuracy": float(balanced_accuracy_score(y_test, y_pred)),
-                "macro_f1": float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
-                "weighted_f1": float(f1_score(y_test, y_pred, average="weighted", zero_division=0)),
-                "mcc": float(matthews_corrcoef(y_test, y_pred)),
-                "recall_by_class": {
-                    str(class_name): float(value)
-                    for class_name, value in zip(fold_data["label_classes"], recall_values)
-                },
+                **fold_metrics(y_test, y_pred, labels, fold_data["label_classes"]),
                 "communication_cost": communication_cost(feature_dataset.X),
                 "number_of_rounds": None,
                 "client_variance": None,

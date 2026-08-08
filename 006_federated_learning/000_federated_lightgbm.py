@@ -72,6 +72,7 @@ from utils._campaigns import (  # noqa: E402
     ensure_campaign_row_index,
     subset_feature_dataset,
 )
+from utils._fairness_metrics import fairness_gap, group_balanced_accuracy, metric_variance  # noqa: E402
 from utils._feature_datasets import (  # noqa: E402
     EXTRACTED_APPROACHES,
     SELECTED_METHODS,
@@ -703,35 +704,6 @@ def model_raw_contribution(model, X) -> np.ndarray:
     if raw.ndim > 1:
         raw = raw[:, -1]
     return raw.reshape(-1)
-
-
-def group_balanced_accuracy(y_true, y_pred, groups: list[str]) -> dict[str, float | None]:
-    frame = pd.DataFrame({"y_true": y_true, "y_pred": y_pred, "group": groups})
-    values: dict[str, float | None] = {}
-    for group, part in frame.groupby("group"):
-        if part["y_true"].nunique() < 2:
-            values[str(group)] = None
-        else:
-            values[str(group)] = float(balanced_accuracy_score(part["y_true"], part["y_pred"]))
-    return values
-
-
-def metric_variance(values: dict[str, float | None] | None) -> float | None:
-    if not values:
-        return None
-    numeric = [float(value) for value in values.values() if value is not None and not pd.isna(value)]
-    if len(numeric) < 2:
-        return None
-    return float(np.var(numeric))
-
-
-def fairness_gap(values: dict[str, float | None] | None) -> float | None:
-    if not values:
-        return None
-    numeric = [float(value) for value in values.values() if value is not None and not pd.isna(value)]
-    if len(numeric) < 2:
-        return None
-    return float(max(numeric) - min(numeric))
 
 
 def fit_client_model(
