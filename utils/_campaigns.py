@@ -12,16 +12,6 @@ from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
 MISSING = "__missing__"
 
 
-def add_campaign_cv_args(parser) -> None:
-    """Compatibility no-op.
-
-    Scripts now define their configuration as file-level constants instead of
-    command-line arguments. This function remains only so older imports do not
-    need to change.
-    """
-    return None
-
-
 def count_table_rows(path: Path) -> int:
     if path.suffix.lower() in {".parquet", ".pq"}:
         return len(pd.read_parquet(path))
@@ -136,6 +126,35 @@ def campaign_kfold_splits(y: np.ndarray, n_splits: int, random_state: int):
 
     splitter = KFold(n_splits=effective_splits, shuffle=True, random_state=random_state)
     return list(splitter.split(np.arange(len(y)))), "kfold", effective_splits
+
+
+def build_client_splits(
+    feature_dataset,
+    y: np.ndarray,
+    k_folds: int,
+    random_state: int,
+    min_clients: int,
+    max_clients: int,
+) -> tuple[list[tuple[str, np.ndarray, list, str]], int]:
+    campaigns = campaign_indices(feature_dataset)
+    if max_clients > 0:
+        campaigns = campaigns[:max_clients]
+    if len(campaigns) < min_clients:
+        raise ValueError(f"fewer than min_clients={min_clients}: {len(campaigns)}")
+
+    client_splits = []
+    effective_folds = []
+    for campaign_id, indices in campaigns:
+        local_y = y[indices]
+        if len(np.unique(local_y)) < 2:
+            continue
+        splits, split_strategy, n_folds = campaign_kfold_splits(local_y, k_folds, random_state)
+        client_splits.append((campaign_id, indices, splits, split_strategy))
+        effective_folds.append(n_folds)
+
+    if len(client_splits) < min_clients:
+        raise ValueError(f"fewer usable clients after class filtering: {len(client_splits)}")
+    return client_splits, int(min(effective_folds))
 
 
 def summarize_numeric(values: list[float | None]) -> float | None:

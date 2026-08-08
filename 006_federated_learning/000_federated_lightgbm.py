@@ -71,6 +71,9 @@ from utils._campaigns import (  # noqa: E402
     cap_rows_by_campaign,
     ensure_campaign_row_index,
     subset_feature_dataset,
+    summarize_dicts,
+    summarize_numeric,
+    summarize_numeric_std,
 )
 from utils._fairness_metrics import fairness_gap, group_balanced_accuracy, metric_variance  # noqa: E402
 from utils._feature_datasets import (  # noqa: E402
@@ -917,37 +920,6 @@ def evaluate_feature_dataset(feature_dataset: FeatureDataset, dataset: str, args
     result["fit_predict_seconds"] = float(time.perf_counter() - total_started)
     result["elapsed_seconds"] = result["fit_predict_seconds"]
     return result
-
-
-def summarize_numeric(values: list[Any]) -> float | None:
-    numeric = [float(value) for value in values if value is not None and not pd.isna(value)]
-    if not numeric:
-        return None
-    return float(np.mean(numeric))
-
-
-def summarize_numeric_std(values: list[Any]) -> float | None:
-    numeric = [float(value) for value in values if value is not None and not pd.isna(value)]
-    if len(numeric) < 2:
-        return None
-    return float(np.std(numeric, ddof=1))
-
-
-def summarize_dicts(dicts: list[dict | None]) -> dict | None:
-    keys: set[str] = set()
-    for value in dicts:
-        if value:
-            keys.update(str(key) for key in value.keys())
-    if not keys:
-        return None
-    return {
-        key: summarize_numeric([
-            value.get(key)
-            for value in dicts
-            if value is not None and key in value
-        ])
-        for key in sorted(keys)
-    }
 
 
 def summarize_fold_results(fold_results: list[dict], feature_dataset: FeatureDataset, dataset: str) -> dict:

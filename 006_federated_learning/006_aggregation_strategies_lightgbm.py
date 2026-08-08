@@ -292,10 +292,12 @@ def main() -> None:
                 print(f"[{position}/{len(configs)}] skipped {config}", flush=True)
                 continue
 
-            run_args = transfer_module.clone_args(
+            run_args = transfer_module.args_with_overrides(
                 args,
-                aggregation_strategy=config["aggregation_strategy"],
-                trim_fraction=float(config.get("trim_fraction", 0.0)),
+                {
+                    "aggregation_strategy": config["aggregation_strategy"],
+                    "trim_fraction": float(config.get("trim_fraction", 0.0)),
+                },
             )
             try:
                 result = transfer_module.evaluate_transfer_weighted_config(

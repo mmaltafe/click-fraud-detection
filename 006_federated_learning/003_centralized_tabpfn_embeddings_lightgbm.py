@@ -16,7 +16,6 @@ representation or the meta-classifier configuration.
 
 from __future__ import annotations
 
-import json
 import sys
 import time
 import warnings
@@ -24,7 +23,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pandas as pd
 from sklearn.metrics import balanced_accuracy_score, f1_score, matthews_corrcoef, recall_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
@@ -33,10 +31,12 @@ PROJECT_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_FOR_IMPORTS) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_FOR_IMPORTS))
 
+from utils._campaigns import build_client_splits, summarize_dicts, summarize_numeric, summarize_numeric_std  # noqa: E402
 from utils._fairness_metrics import fairness_gap, group_balanced_accuracy, metric_variance  # noqa: E402
 from utils.federated_lightgbm_runner import (  # noqa: E402
     PROJECT_ROOT,
     load_base_module,
+    load_existing_results,
     prepare_base_experiment,
     save_results,
 )
@@ -48,60 +48,6 @@ CONFIG_PREDICTION_THRESHOLDS = (0.40, 0.45, 0.50, 0.55, 0.60)
 CONFIG_FORCE_RERUN = False
 
 CLASSIFIER_NAME = "Centralized-TabPFN-Embeddings-LightGBM"
-
-
-def load_existing(output_path: Path) -> list[dict]:
-    path = output_path / "results.json"
-    if not path.exists():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-
-
-def summarize_numeric(values: list[Any]) -> float | None:
-    numeric = [float(value) for value in values if value is not None and not pd.isna(value)]
-    return float(np.mean(numeric)) if numeric else None
-
-
-def summarize_numeric_std(values: list[Any]) -> float | None:
-    numeric = [float(value) for value in values if value is not None and not pd.isna(value)]
-    return float(np.std(numeric, ddof=1)) if len(numeric) > 1 else None
-
-
-def summarize_dicts(dicts: list[dict | None]) -> dict | None:
-    keys: set[str] = set()
-    for value in dicts:
-        if value:
-            keys.update(str(key) for key in value.keys())
-    if not keys:
-        return None
-    return {
-        key: summarize_numeric([value.get(key) for value in dicts if value is not None and key in value])
-        for key in sorted(keys)
-    }
-
-
-def build_client_splits(base, feature_dataset, y: np.ndarray, args):
-    campaigns = base.campaign_indices(feature_dataset)
-    if args.max_clients > 0:
-        campaigns = campaigns[: args.max_clients]
-    if len(campaigns) < args.min_clients:
-        raise ValueError(f"fewer than min_clients={args.min_clients}: {len(campaigns)}")
-
-    client_splits = []
-    effective_folds = []
-    for campaign_id, indices in campaigns:
-        local_y = y[indices]
-        if len(np.unique(local_y)) < 2:
-            continue
-        splits, split_strategy, n_folds = base.campaign_kfold_splits(local_y, args.k_folds, args.random_state)
-        client_splits.append((campaign_id, indices, splits, split_strategy))
-        effective_folds.append(n_folds)
-    if len(client_splits) < args.min_clients:
-        raise ValueError(f"fewer usable clients after class filtering: {len(client_splits)}")
-    return client_splits, int(min(effective_folds))
 
 
 def fit_server_lightgbm(base, active_dataset, y: np.ndarray, train_idx: np.ndarray, args, seed: int):
@@ -133,7 +79,9 @@ def evaluate_threshold(base, feature_dataset, dataset: str, args, threshold: flo
     label_encoder = LabelEncoder()
     y = label_encoder.fit_transform(y_text)
     labels = np.arange(len(label_encoder.classes_))
-    client_splits, n_global_folds = build_client_splits(base, feature_dataset, y, args)
+    client_splits, n_global_folds = build_client_splits(
+        feature_dataset, y, args.k_folds, args.random_state, args.min_clients, args.max_clients
+    )
 
     fold_rows = []
     for fold_number in range(n_global_folds):
@@ -306,7 +254,7 @@ def main() -> None:
     base = load_base_module()
     args, dataset, feature_dataset, best_bayesian = prepare_base_experiment(base, CONFIG_OUTPUT_ROOT)
     output_path = PROJECT_ROOT / CONFIG_OUTPUT_ROOT / dataset
-    results = [] if CONFIG_FORCE_RERUN else load_existing(output_path)
+    results = [] if CONFIG_FORCE_RERUN else load_existing_results(output_path)
     done = {
         float(result.get("prediction_threshold"))
         for result in results

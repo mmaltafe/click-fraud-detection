@@ -10,7 +10,6 @@ similarity-weighted federated ensemble.
 
 from __future__ import annotations
 
-import json
 import sys
 import time
 import warnings
@@ -27,9 +26,11 @@ PROJECT_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT_FOR_IMPORTS) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT_FOR_IMPORTS))
 
+from utils._campaigns import build_client_splits, summarize_numeric, summarize_numeric_std  # noqa: E402
 from utils.federated_lightgbm_runner import (  # noqa: E402
     PROJECT_ROOT,
     load_base_module,
+    load_existing_results,
     prepare_base_experiment,
     save_results,
 )
@@ -41,47 +42,6 @@ CONFIG_PREDICTION_THRESHOLD = 0.50
 CONFIG_FORCE_RERUN = False
 
 CLASSIFIER_NAME = "Cross-Campaign-LightGBM"
-
-
-def load_existing(output_path: Path) -> list[dict]:
-    path = output_path / "results.json"
-    if not path.exists():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-
-
-def summarize_numeric(values: list[Any]) -> float | None:
-    numeric = [float(value) for value in values if value is not None and not pd.isna(value)]
-    return float(np.mean(numeric)) if numeric else None
-
-
-def summarize_numeric_std(values: list[Any]) -> float | None:
-    numeric = [float(value) for value in values if value is not None and not pd.isna(value)]
-    return float(np.std(numeric, ddof=1)) if len(numeric) > 1 else None
-
-
-def build_client_splits(base, feature_dataset, y: np.ndarray, args):
-    campaigns = base.campaign_indices(feature_dataset)
-    if args.max_clients > 0:
-        campaigns = campaigns[: args.max_clients]
-    if len(campaigns) < args.min_clients:
-        raise ValueError(f"fewer than min_clients={args.min_clients}: {len(campaigns)}")
-
-    client_splits = []
-    effective_folds = []
-    for campaign_id, indices in campaigns:
-        local_y = y[indices]
-        if len(np.unique(local_y)) < 2:
-            continue
-        splits, split_strategy, n_folds = base.campaign_kfold_splits(local_y, args.k_folds, args.random_state)
-        client_splits.append((str(campaign_id), indices, splits, split_strategy))
-        effective_folds.append(n_folds)
-    if len(client_splits) < args.min_clients:
-        raise ValueError(f"fewer usable clients after class filtering: {len(client_splits)}")
-    return client_splits, int(min(effective_folds))
 
 
 def fit_source_model(base, active_dataset, y: np.ndarray, train_idx: np.ndarray, args, seed: int):
@@ -233,7 +193,9 @@ def evaluate_transfer_matrix(base, feature_dataset, dataset: str, args) -> list[
     y = label_encoder.fit_transform(y_text)
     labels = np.arange(len(label_encoder.classes_))
     class_names = [str(item) for item in label_encoder.classes_.tolist()]
-    client_splits, n_global_folds = build_client_splits(base, feature_dataset, y, args)
+    client_splits, n_global_folds = build_client_splits(
+        feature_dataset, y, args.k_folds, args.random_state, args.min_clients, args.max_clients
+    )
     pair_fold_rows: dict[tuple[str, str], list[dict]] = {
         (source_campaign, target_campaign): []
         for source_campaign, *_source_rest in client_splits
@@ -339,7 +301,7 @@ def main() -> None:
     args, dataset, feature_dataset, best_bayesian = prepare_base_experiment(base, CONFIG_OUTPUT_ROOT)
     output_path = PROJECT_ROOT / CONFIG_OUTPUT_ROOT / dataset
     if output_path.exists() and not CONFIG_FORCE_RERUN:
-        existing = load_existing(output_path)
+        existing = load_existing_results(output_path)
         if existing:
             print(f"{CONFIG_EXPERIMENT_NAME}: existing results found in {output_path}; skipping")
             return

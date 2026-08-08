@@ -14,7 +14,6 @@ between campaigns. It evaluates:
 
 from __future__ import annotations
 
-import json
 import sys
 import time
 import warnings
@@ -34,7 +33,9 @@ if str(PROJECT_ROOT_FOR_IMPORTS) not in sys.path:
 
 from utils.federated_lightgbm_runner import (
     PROJECT_ROOT,
+    args_with_overrides,
     load_base_module,
+    load_existing_results,
     prepare_base_experiment,
     save_results,
 )
@@ -46,22 +47,6 @@ CONFIG_ROUNDS = 10
 CONFIG_LOCAL_TREES_PER_ROUND = 20
 CONFIG_WEIGHTING = "uniform"
 CONFIG_PREDICTION_THRESHOLD = 0.5
-
-
-def clone_args(args, **overrides):
-    payload = vars(args).copy()
-    payload.update(overrides)
-    return type(args)(**payload)
-
-
-def load_existing(output_path: Path) -> list[dict]:
-    path = output_path / "results.json"
-    if not path.exists():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return []
 
 
 def metric_row(y_true, y_pred, labels, class_names) -> dict[str, Any]:
@@ -309,15 +294,17 @@ def evaluate_centralized(base, feature_dataset, y, labels, class_names, campaign
 def main() -> None:
     base = load_base_module()
     args, dataset, feature_dataset, best_bayesian = prepare_base_experiment(base, CONFIG_OUTPUT_ROOT)
-    args = clone_args(
+    args = args_with_overrides(
         args,
-        rounds=CONFIG_ROUNDS,
-        local_trees_per_round=CONFIG_LOCAL_TREES_PER_ROUND,
-        weighting=CONFIG_WEIGHTING,
-        prediction_threshold=CONFIG_PREDICTION_THRESHOLD,
+        {
+            "rounds": CONFIG_ROUNDS,
+            "local_trees_per_round": CONFIG_LOCAL_TREES_PER_ROUND,
+            "weighting": CONFIG_WEIGHTING,
+            "prediction_threshold": CONFIG_PREDICTION_THRESHOLD,
+        },
     )
     output_path = PROJECT_ROOT / CONFIG_OUTPUT_ROOT / dataset
-    results = load_existing(output_path)
+    results = load_existing_results(output_path)
     if results:
         print(f"{CONFIG_EXPERIMENT_NAME}: existing results found in {output_path}; skipping")
         return
