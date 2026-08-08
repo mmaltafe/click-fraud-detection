@@ -45,9 +45,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ML_EVALUATION_DIR = PROJECT_ROOT / "003_machine_learning_evaluation"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
 if str(ML_EVALUATION_DIR) not in sys.path:
     sys.path.insert(0, str(ML_EVALUATION_DIR))
 
+from utils._env import VALID_DATASETS, MISSING, PRIMARY_METRIC, read_env_value  # noqa: E402
 from utils._campaigns import (  # noqa: E402
     aggregate_campaign_fold_results,
     campaign_indices,
@@ -58,10 +60,7 @@ from utils._campaigns import (  # noqa: E402
 from utils._resume import add_resume_metadata, base_config, config_hash, load_existing_results, save_results  # noqa: E402
 
 
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
-PRIMARY_METRIC = "balanced_accuracy"
 CLASSIFIER_NAME = "TabPFN-Frozen-Head"
-MISSING = "__missing__"
 
 
 # Pipeline configuration constants. Edit these values to change this script.
@@ -135,19 +134,6 @@ def parse_args() -> Namespace:
         plan_only=CONFIG_PLAN_ONLY,
         retry_errors=CONFIG_RETRY_ERRORS,
     )
-
-
-def read_env_value(env_file: Path, key: str) -> str:
-    if not env_file.exists():
-        raise FileNotFoundError(f"Environment file not found: {env_file}")
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        if name.strip() == key:
-            return value.strip().strip('"').strip("'")
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def load_tabpfn_module():

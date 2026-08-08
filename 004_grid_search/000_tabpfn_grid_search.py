@@ -28,8 +28,13 @@ import numpy as np
 import pandas as pd
 
 
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
-PRIMARY_METRIC = "balanced_accuracy"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from utils._env import VALID_DATASETS, PRIMARY_METRIC, read_env_value  # noqa: E402
+
+
 EVALUATION_METHOD = "tabpfn"
 GRID_SEARCH_METHOD = "tabpfn_detailed"
 
@@ -105,18 +110,6 @@ def parse_args() -> argparse.Namespace:
         retry_failed=CONFIG_RETRY_FAILED,
         progress=CONFIG_PROGRESS,
     )
-
-def read_env_value(env_file: Path, key: str) -> str:
-    if not env_file.exists():
-        raise FileNotFoundError(f"Environment file not found: {env_file}")
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        if name.strip() == key:
-            return value.strip().strip('"').strip("'")
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def parse_int_grid(value: str) -> list[int]:

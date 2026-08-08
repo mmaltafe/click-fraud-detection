@@ -38,6 +38,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils._env import MISSING  # noqa: E402
 from utils.target_utils import TARGET_COLUMN, binary_attack_type  # noqa: E402
 
 
@@ -64,7 +65,6 @@ CONFIG_RESIDUAL_ALPHA = 0.50
 CONFIG_PREDICTION_THRESHOLD = 0.50
 CONFIG_FORCE_RERUN = True
 
-MISSING = "__missing__"
 CLASS_NAMES = ["attack", "legitimate"]
 SEMANTIC_HEADERS_SCRIPT = PROJECT_ROOT / "001_feature_extraction" / "001_semantic_headers.py"
 TABPFN_SCRIPT = PROJECT_ROOT / "003_machine_learning_evaluation" / "002_tabpfn.py"

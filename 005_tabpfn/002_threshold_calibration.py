@@ -39,11 +39,12 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-BASE_SCRIPT = PROJECT_ROOT / "005_tabpfn" / "000_fine_tune_head.py"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
-PRIMARY_METRIC = "balanced_accuracy"
-MISSING = "__missing__"
+from utils._env import VALID_DATASETS, MISSING, PRIMARY_METRIC  # noqa: E402
+
+BASE_SCRIPT = PROJECT_ROOT / "005_tabpfn" / "000_fine_tune_head.py"
 
 
 # Pipeline configuration constants. Edit these values to change this script.

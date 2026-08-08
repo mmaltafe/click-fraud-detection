@@ -44,6 +44,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
 from utils.target_utils import binary_target_frame  # noqa: E402
 
 from utils._campaigns import (
@@ -57,8 +58,6 @@ from utils._campaigns import (
 from utils._resume import add_resume_metadata, base_config, completed_keys, config_hash, load_existing_results, result_key, save_results
 
 
-MISSING = "__missing__"
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
 EXTRACTED_APPROACHES = ("semantic_headers", "tf_idf", "sentence_transformer")
 SELECTED_METHODS = ("pca", "truncatedSVD", "chi2", "selectKBest")
 SELECTED_APPROACHES = ("label_encoder", "semantic_headers", "tf_idf", "sentence_transformer")
@@ -135,13 +134,6 @@ def read_env_file(env_file: Path) -> dict[str, str]:
         name, value = line.split("=", 1)
         values[name.strip()] = value.strip().strip('"').strip("'")
     return values
-
-
-def read_env_value(env_file: Path, key: str) -> str:
-    values = read_env_file(env_file)
-    if key in values:
-        return values[key]
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def configure_tabpfn_environment(project_root: Path, args: argparse.Namespace) -> None:

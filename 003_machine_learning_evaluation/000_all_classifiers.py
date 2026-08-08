@@ -53,6 +53,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
 from utils.target_utils import binary_target_frame  # noqa: E402
 
 from utils._campaigns import (
@@ -66,8 +67,6 @@ from utils._campaigns import (
 from utils._resume import add_resume_metadata, base_config, completed_keys, config_hash, load_existing_results, result_key, save_results
 
 
-MISSING = "__missing__"
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
 EXTRACTED_APPROACHES = ("semantic_headers", "tf_idf", "sentence_transformer")
 SELECTED_METHODS = ("pca", "truncatedSVD", "chi2", "selectKBest")
 SELECTED_APPROACHES = ("label_encoder", "semantic_headers", "tf_idf", "sentence_transformer")
@@ -115,20 +114,6 @@ def parse_args() -> argparse.Namespace:
         max_rbf_svm_train_rows=CONFIG_MAX_RBF_SVM_TRAIN_ROWS,
         max_qda_features=CONFIG_MAX_QDA_FEATURES,
     )
-
-def read_env_value(env_file: Path, key: str) -> str:
-    if not env_file.exists():
-        raise FileNotFoundError(f"Environment file not found: {env_file}")
-
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        if name.strip() == key:
-            return value.strip().strip('"').strip("'")
-
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def classifier_factories(random_state: int):

@@ -60,10 +60,12 @@ warnings.filterwarnings(
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
 ML_EVALUATION_DIR = PROJECT_ROOT / "003_machine_learning_evaluation"
 if str(ML_EVALUATION_DIR) not in sys.path:
     sys.path.insert(0, str(ML_EVALUATION_DIR))
 
+from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
 from utils._campaigns import (  # noqa: E402
     campaign_indices,
     campaign_kfold_splits,
@@ -82,8 +84,6 @@ from utils._resume import (  # noqa: E402
 )
 
 
-MISSING = "__missing__"
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
 EXTRACTED_APPROACHES = ("semantic_headers", "tf_idf", "sentence_transformer")
 SELECTED_METHODS = ("pca", "truncatedSVD", "chi2", "selectKBest")
 SELECTED_APPROACHES = ("label_encoder", "semantic_headers", "tf_idf", "sentence_transformer")
@@ -187,19 +187,6 @@ def parse_args() -> argparse.Namespace:
         use_tabpfn_embedding_cache=CONFIG_USE_TABPFN_EMBEDDING_CACHE,
         save_campaign_embeddings=CONFIG_SAVE_CAMPAIGN_EMBEDDINGS,
     )
-
-
-def read_env_value(env_file: Path, key: str) -> str:
-    if not env_file.exists():
-        raise FileNotFoundError(f"Environment file not found: {env_file}")
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        if name.strip() == key:
-            return value.strip().strip('"').strip("'")
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def load_module(path: Path, name: str):

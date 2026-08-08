@@ -25,16 +25,12 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
-CAMPAIGN_COLUMNS = (
-    "campaign",
-    "campaign_id",
-    "campaignid",
-    "campaignId",
-    "Campaign",
-    "CampaignId",
-    "CampaignID",
-)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from utils._columns import CAMPAIGN_COLUMNS  # noqa: E402
+from utils._env import VALID_DATASETS, read_env_value  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -57,20 +53,6 @@ def parse_args() -> argparse.Namespace:
         raw_root=CONFIG_RAW_ROOT,
         output_root=CONFIG_OUTPUT_ROOT,
     )
-
-def read_env_value(env_file: Path, key: str) -> str:
-    if not env_file.exists():
-        raise FileNotFoundError(f"Environment file not found: {env_file}")
-
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        if name.strip() == key:
-            return value.strip().strip('"').strip("'")
-
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def campaign_column(columns: list[str]) -> str | None:

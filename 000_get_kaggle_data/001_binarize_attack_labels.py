@@ -26,10 +26,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils._env import VALID_DATASETS  # noqa: E402
 from utils.target_utils import TARGET_COLUMNS, binary_attack_type  # noqa: E402
 
 
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
 TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".parquet", ".feather"}
 
 

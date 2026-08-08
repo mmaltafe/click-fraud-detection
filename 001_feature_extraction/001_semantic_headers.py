@@ -28,21 +28,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils._columns import CAMPAIGN_COLUMNS  # noqa: E402
+from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
 from utils.target_utils import binary_target_series  # noqa: E402
 
 
-MISSING = "__missing__"
-VALID_DATASETS = {"dev5", "facebook50", "all50"}
 TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".parquet", ".feather"}
-CAMPAIGN_COLUMNS = (
-    "campaign",
-    "campaign_id",
-    "campaignid",
-    "campaignId",
-    "Campaign",
-    "CampaignId",
-    "CampaignID",
-)
 TARGET_COLUMNS = ("Attack_type", "attack_type")
 
 HEADER_ALIASES = {
@@ -96,20 +87,6 @@ def parse_args() -> argparse.Namespace:
         raw_root=CONFIG_RAW_ROOT,
         output_root=CONFIG_OUTPUT_ROOT,
     )
-
-def read_env_value(env_file: Path, key: str) -> str:
-    if not env_file.exists():
-        raise FileNotFoundError(f"Environment file not found: {env_file}")
-
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        name, value = line.split("=", 1)
-        if name.strip() == key:
-            return value.strip().strip('"').strip("'")
-
-    raise KeyError(f"{key} was not found in {env_file}")
 
 
 def normalized_column_lookup(columns: list[str]) -> dict[str, str]:

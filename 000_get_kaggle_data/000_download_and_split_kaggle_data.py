@@ -24,21 +24,18 @@ from pathlib import Path
 from typing import Iterable
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from utils._columns import CAMPAIGN_COLUMNS  # noqa: E402
+
+
 DATASET_SLUG = "mmaltafe/click-fraud-detection"
 OUTPUT_ROOT = "data/raw"
 FACEBOOK_SOURCE_NUMBER = 1
 MAX_ACCESSES_PER_CAMPAIGN = 10_000
 DEFAULT_RANDOM_SEED = 42
-
-CAMPAIGN_COLUMNS = (
-    "campaign",
-    "campaign_id",
-    "campaignid",
-    "campaignId",
-    "Campaign",
-    "CampaignId",
-    "CampaignID",
-)
 
 
 @dataclass(frozen=True)
