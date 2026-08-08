@@ -64,8 +64,6 @@ ML_EVALUATION_DIR = PROJECT_ROOT / "003_machine_learning_evaluation"
 if str(ML_EVALUATION_DIR) not in sys.path:
     sys.path.insert(0, str(ML_EVALUATION_DIR))
 
-from utils.target_utils import binary_target_frame  # noqa: E402
-
 from utils._campaigns import (  # noqa: E402
     campaign_indices,
     campaign_kfold_splits,

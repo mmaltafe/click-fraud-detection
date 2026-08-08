@@ -41,7 +41,6 @@ from utils.target_utils import binary_target_frame, binary_target_series  # noqa
 
 MISSING = "__missing__"
 VALID_DATASETS = {"dev5", "facebook50", "all50"}
-APPROACHES = ("label_encoder", "semantic_headers", "tf_idf", "sentence_transformer")
 TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".parquet", ".feather"}
 CAMPAIGN_COLUMNS = (
     "campaign",

@@ -11,6 +11,7 @@ venv/
 env/
 
 # Local credentials and machine-specific overrides
+.env
 .env.local
 *.env.local
 kaggle.json

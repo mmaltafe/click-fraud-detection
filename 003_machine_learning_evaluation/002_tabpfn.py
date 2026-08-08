@@ -47,7 +47,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from utils.target_utils import binary_target_frame  # noqa: E402
 
 from utils._campaigns import (
-    add_campaign_cv_args,
     aggregate_campaign_fold_results,
     campaign_indices,
     campaign_kfold_splits,
@@ -324,37 +323,6 @@ def discover_feature_datasets(extracted_root: Path, selected_root: Path, raw_roo
             if loaded is not None:
                 datasets.append(ensure_campaign_row_index(loaded, dataset, raw_root))
     return datasets
-
-
-def cap_rows(feature_dataset: FeatureDataset, max_rows: int, random_state: int) -> FeatureDataset:
-    if max_rows <= 0 or len(feature_dataset.target) <= max_rows:
-        return feature_dataset
-
-    y = feature_dataset.target["attack_type"].astype(str)
-    stratify = y if y.value_counts().min() >= 2 else None
-    _, sample_idx = train_test_split(
-        np.arange(len(y)),
-        test_size=max_rows,
-        random_state=random_state,
-        stratify=stratify,
-    )
-    sample_idx = np.sort(sample_idx)
-    X = feature_dataset.X[sample_idx]
-    target = feature_dataset.target.iloc[sample_idx].reset_index(drop=True)
-    row_index = (
-        feature_dataset.row_index.iloc[sample_idx].reset_index(drop=True)
-        if feature_dataset.row_index is not None and len(feature_dataset.row_index) == len(y)
-        else feature_dataset.row_index
-    )
-    return FeatureDataset(
-        feature_dataset.feature_stage,
-        feature_dataset.feature_selection,
-        feature_dataset.feature_approach,
-        feature_dataset.path,
-        X,
-        target,
-        row_index,
-    )
 
 
 def needs_dense(classifier_name: str) -> bool:

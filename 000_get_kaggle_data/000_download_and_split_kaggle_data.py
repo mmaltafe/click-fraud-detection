@@ -30,8 +30,6 @@ FACEBOOK_SOURCE_NUMBER = 1
 MAX_ACCESSES_PER_CAMPAIGN = 10_000
 DEFAULT_RANDOM_SEED = 42
 
-KEEP_ORIGINAL = True
-
 CAMPAIGN_COLUMNS = (
     "campaign",
     "campaign_id",
@@ -306,14 +304,10 @@ def main() -> None:
         temporary_dir = Path(temporary)
         dataset_root = download_dataset(temporary_dir)
 
-        if KEEP_ORIGINAL:
-            shutil.copytree(dataset_root, original_dir)
-            dataset_root = original_dir
+        shutil.copytree(dataset_root, original_dir)
+        dataset_root = original_dir
 
         prepare_subdatasets(dataset_root, output_root, DEFAULT_RANDOM_SEED)
-
-    if not KEEP_ORIGINAL and original_dir.exists():
-        shutil.rmtree(original_dir)
 
     print(f"Done. Subdatasets saved under {output_root}")
 

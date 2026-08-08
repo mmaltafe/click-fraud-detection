@@ -203,13 +203,6 @@ def usable_for_10_90(path: Path) -> bool:
     return len(counts) >= 2 and counts.min() >= 2 and len(frame) >= 20
 
 
-def select_target_campaign() -> Path:
-    candidates = [path for path in ordered_facebook_campaigns() if usable_for_10_90(path)]
-    if not candidates:
-        raise ValueError("No usable Facebook campaign with at least two binary classes was found.")
-    return random.Random(CONFIG_RANDOM_STATE).choice(candidates)
-
-
 def support_campaigns(target_path: Path) -> list[Path]:
     candidates = [path for path in ordered_facebook_campaigns() if path != target_path and usable_for_10_90(path)]
     if CONFIG_MAX_SUPPORT_CAMPAIGNS > 0:

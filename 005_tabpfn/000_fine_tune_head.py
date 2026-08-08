@@ -539,25 +539,6 @@ def communication_cost(X) -> int:
     return int(np.asarray(X).nbytes)
 
 
-def evaluate_campaign_head(feature_dataset, campaign_id: str, factory, args: Namespace, best: BestTabPFNConfig) -> dict:
-    embedding_folds, split_strategy, effective_folds = prepare_campaign_embedding_folds(
-        feature_dataset,
-        campaign_id,
-        factory,
-        args,
-        best,
-    )
-    return evaluate_campaign_head_from_embeddings(
-        feature_dataset,
-        campaign_id,
-        embedding_folds,
-        split_strategy,
-        effective_folds,
-        args,
-        best,
-    )
-
-
 def prepare_campaign_embedding_folds(feature_dataset, campaign_id: str, factory, args: Namespace, best: BestTabPFNConfig):
     y_text = feature_dataset.target["attack_type"].fillna(MISSING).astype(str).to_numpy()
     if len(np.unique(y_text)) < 2:
