@@ -20,9 +20,7 @@ import math
 import sys
 import time
 import warnings
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -40,7 +38,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
-from utils.target_utils import binary_target_frame  # noqa: E402
 
 from utils._campaigns import (
     aggregate_campaign_fold_results,
@@ -49,24 +46,11 @@ from utils._campaigns import (
     cap_rows_by_campaign,
     subset_feature_dataset,
 )
+from utils._feature_datasets import FeatureDataset, discover_feature_datasets  # noqa: E402
 from utils._resume import add_resume_metadata, base_config, completed_keys, config_hash, load_existing_results, result_key, save_results
 
 
-EXTRACTED_APPROACHES = ("semantic_headers", "tf_idf", "sentence_transformer")
-SELECTED_METHODS = ("pca", "truncatedSVD", "chi2", "selectKBest")
-SELECTED_APPROACHES = ("label_encoder", "semantic_headers", "tf_idf", "sentence_transformer")
 FEDERATED_ALGORITHMS = ("FedAvg", "FedProx")
-
-
-@dataclass
-class FeatureDataset:
-    feature_stage: str
-    feature_selection: str | None
-    feature_approach: str
-    path: Path
-    X: Any
-    target: pd.DataFrame
-    row_index: pd.DataFrame | None
 
 
 class MLP(nn.Module):
@@ -123,137 +107,6 @@ def parse_args() -> argparse.Namespace:
         max_clients=CONFIG_MAX_CLIENTS,
         fedprox_mu=CONFIG_FEDPROX_MU,
     )
-
-
-def read_metadata(path: Path) -> dict:
-    metadata_path = path / "metadata.json"
-    if not metadata_path.exists():
-        return {}
-    return json.loads(metadata_path.read_text(encoding="utf-8"))
-
-
-def metadata_row_index(path: Path) -> pd.DataFrame | None:
-    row_index = read_metadata(path).get("row_index")
-    if not row_index:
-        return None
-    return pd.DataFrame(row_index)
-
-
-def count_table_rows(path: Path) -> int:
-    if path.suffix.lower() in {".parquet", ".pq"}:
-        return len(pd.read_parquet(path))
-    return len(pd.read_csv(path))
-
-
-def raw_row_index(dataset: str, raw_root: Path, expected_rows: int) -> pd.DataFrame | None:
-    dataset_path = raw_root / dataset
-    if not dataset_path.exists():
-        return None
-    rows: list[dict[str, Any]] = []
-    if dataset == "all50":
-        files = [
-            (path, path.parent.name, path.stem)
-            for path in sorted(dataset_path.glob("TS_*/*"))
-            if path.is_file() and path.suffix.lower() in {".csv", ".parquet", ".pq"}
-        ]
-    else:
-        files = [
-            (path, MISSING, path.stem)
-            for path in sorted(dataset_path.glob("*"))
-            if path.is_file() and path.suffix.lower() in {".csv", ".parquet", ".pq"}
-        ]
-    for path, traffic_source, campaign in files:
-        for source_row_index in range(count_table_rows(path)):
-            rows.append(
-                {
-                    "traffic_source": traffic_source,
-                    "campaign": campaign,
-                    "source_path": str(path),
-                    "source_row_index": source_row_index,
-                }
-            )
-    if len(rows) != expected_rows:
-        return None
-    return pd.DataFrame(rows)
-
-
-def ensure_campaign_row_index(feature_dataset: FeatureDataset, dataset: str, raw_root: Path) -> FeatureDataset:
-    if (
-        feature_dataset.row_index is not None
-        and len(feature_dataset.row_index) == len(feature_dataset.target)
-        and "campaign" in feature_dataset.row_index.columns
-    ):
-        return feature_dataset
-    row_index = raw_row_index(dataset, raw_root, len(feature_dataset.target))
-    if row_index is None:
-        return feature_dataset
-    return FeatureDataset(
-        feature_dataset.feature_stage,
-        feature_dataset.feature_selection,
-        feature_dataset.feature_approach,
-        feature_dataset.path,
-        feature_dataset.X,
-        feature_dataset.target,
-        row_index,
-    )
-
-
-def load_extracted_dataset(root: Path, dataset: str, approach: str) -> FeatureDataset | None:
-    path = root / approach / dataset
-    if approach == "semantic_headers":
-        features_path = path / "semantic_headers.parquet"
-        target_path = path / "target.parquet"
-        if not features_path.exists() or not target_path.exists():
-            return None
-        X = pd.read_parquet(features_path).to_numpy(dtype=np.float32)
-        target = binary_target_frame(pd.read_parquet(target_path))
-        return FeatureDataset("extracted_features", None, approach, path, X, target, None)
-
-    if approach == "tf_idf":
-        features_path = path / "tf_idf_matrix.npz"
-        target_path = path / "target.parquet"
-        if not features_path.exists() or not target_path.exists():
-            return None
-        X = sparse.load_npz(features_path).astype(np.float32)
-        target = binary_target_frame(pd.read_parquet(target_path))
-        return FeatureDataset("extracted_features", None, approach, path, X, target, metadata_row_index(path))
-
-    if approach == "sentence_transformer":
-        features_path = path / "embeddings.npy"
-        target_path = path / "target.parquet"
-        if not features_path.exists() or not target_path.exists():
-            return None
-        X = np.load(features_path).astype(np.float32, copy=False)
-        target = binary_target_frame(pd.read_parquet(target_path))
-        return FeatureDataset("extracted_features", None, approach, path, X, target, metadata_row_index(path))
-
-    return None
-
-
-def load_selected_dataset(root: Path, dataset: str, method: str, approach: str) -> FeatureDataset | None:
-    path = root / method / approach / dataset
-    features_path = path / "features.npy"
-    target_path = path / "target.parquet"
-    if not features_path.exists() or not target_path.exists():
-        return None
-    X = np.load(features_path).astype(np.float32, copy=False)
-    target = binary_target_frame(pd.read_parquet(target_path))
-    return FeatureDataset("selected_features", method, approach, path, X, target, None)
-
-
-def discover_feature_datasets(extracted_root: Path, selected_root: Path, raw_root: Path, dataset: str) -> list[FeatureDataset]:
-    datasets: list[FeatureDataset] = []
-    for approach in EXTRACTED_APPROACHES:
-        loaded = load_extracted_dataset(extracted_root, dataset, approach)
-        if loaded is not None:
-            datasets.append(ensure_campaign_row_index(loaded, dataset, raw_root))
-
-    for method in SELECTED_METHODS:
-        for approach in SELECTED_APPROACHES:
-            loaded = load_selected_dataset(selected_root, dataset, method, approach)
-            if loaded is not None:
-                datasets.append(ensure_campaign_row_index(loaded, dataset, raw_root))
-    return datasets
 
 
 def dense_array(X, max_dense_cells: int = 20_000_000) -> np.ndarray:
