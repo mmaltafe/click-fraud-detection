@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local credentials and machine-specific overrides
+.env.local
+*.env.local
+kaggle.json
+
+# Generated data and experiment outputs
+data/raw/*
+data/processed/*
+data/tabpfn/*
+results/*
+models/*
+
+# Keep empty directory placeholders
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/tabpfn/.gitkeep
+!results/.gitkeep
+!models/.gitkeep
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+.DS_Store
