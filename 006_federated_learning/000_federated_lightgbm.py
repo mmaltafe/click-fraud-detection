@@ -39,7 +39,6 @@ import math
 import sys
 import time
 import warnings
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +72,12 @@ from utils._campaigns import (  # noqa: E402
     ensure_campaign_row_index,
     subset_feature_dataset,
 )
+from utils._feature_datasets import (  # noqa: E402
+    EXTRACTED_APPROACHES,
+    SELECTED_METHODS,
+    SELECTED_APPROACHES,
+    FeatureDataset,
+)
 from utils._resume import (  # noqa: E402
     add_resume_metadata,
     base_config,
@@ -84,22 +89,8 @@ from utils._resume import (  # noqa: E402
 )
 
 
-EXTRACTED_APPROACHES = ("semantic_headers", "tf_idf", "sentence_transformer")
-SELECTED_METHODS = ("pca", "truncatedSVD", "chi2", "selectKBest")
-SELECTED_APPROACHES = ("label_encoder", "semantic_headers", "tf_idf", "sentence_transformer")
 CLASSIFIER_NAME = "Federated-LightGBM"
 FEDERATED_ALGORITHM = "GlobalTabPFNEmbeddingsLocalLightGBMWeightedEnsemble"
-
-
-@dataclass
-class FeatureDataset:
-    feature_stage: str
-    feature_selection: str | None
-    feature_approach: str
-    path: Path
-    X: Any
-    target: pd.DataFrame
-    row_index: pd.DataFrame | None
 
 
 # Pipeline configuration constants. Edit these values to change this script.
