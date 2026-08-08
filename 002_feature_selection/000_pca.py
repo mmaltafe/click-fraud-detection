@@ -18,11 +18,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -34,13 +32,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils._columns import CAMPAIGN_COLUMNS  # noqa: E402
+from utils._columns import CAMPAIGN_COLUMNS, normalize_name, is_table, find_column, read_table, raw_files_for_dataset, stringify_value  # noqa: E402
 from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
-from utils.target_utils import binary_target_frame, binary_target_series  # noqa: E402
-
-
-TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".parquet", ".feather"}
-TARGET_COLUMNS = ("Attack_type", "attack_type")
+from utils.target_utils import binary_target_frame, binary_target_series, TARGET_COLUMNS  # noqa: E402
 
 
 # Pipeline configuration constants. Edit these values to change this script.
@@ -64,65 +58,6 @@ def parse_args() -> argparse.Namespace:
         batch_size=CONFIG_BATCH_SIZE,
         approaches=CONFIG_APPROACHES,
     )
-
-
-def normalize_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", str(value).strip().lower()).strip("_")
-
-
-def find_column(columns: Iterable[str], candidates: Iterable[str]) -> str | None:
-    normalized = {normalize_name(column): column for column in columns}
-    for candidate in candidates:
-        candidate_name = normalize_name(candidate)
-        if candidate_name in normalized:
-            return normalized[candidate_name]
-    return None
-
-
-def is_table(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in TABLE_SUFFIXES and not path.name.startswith(".")
-
-
-def read_table(path: Path) -> pd.DataFrame | None:
-    try:
-        suffix = path.suffix.lower()
-        if suffix == ".parquet":
-            return pd.read_parquet(path)
-        if suffix == ".feather":
-            return pd.read_feather(path)
-
-        separator = "\t" if suffix == ".tsv" else None
-        return pd.read_csv(path, sep=separator, engine="python")
-    except Exception as exc:
-        print(f"WARNING: skipping unreadable table {path}: {exc}", file=sys.stderr)
-        return None
-
-
-def raw_files_for_dataset(dataset: str, dataset_path: Path) -> list[tuple[Path, str, str]]:
-    if not dataset_path.exists():
-        raise FileNotFoundError(f"Raw dataset folder not found: {dataset_path}")
-
-    files: list[tuple[Path, str, str]] = []
-    if dataset == "all50":
-        for traffic_source in sorted(path for path in dataset_path.iterdir() if path.is_dir()):
-            for path in sorted(traffic_source.rglob("*")):
-                if is_table(path):
-                    campaign = path.parent.name if path.parent != traffic_source else path.stem
-                    files.append((path, traffic_source.name, campaign))
-        return files
-
-    for path in sorted(dataset_path.rglob("*")):
-        if is_table(path):
-            campaign = path.parent.name if path.parent != dataset_path else path.stem
-            files.append((path, MISSING, campaign))
-    return files
-
-
-def stringify_value(value: object) -> str:
-    if pd.isna(value):
-        return MISSING
-    text = str(value).strip()
-    return text if text else MISSING
 
 
 def target_from_table(table: pd.DataFrame) -> pd.Series:

@@ -26,11 +26,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils._columns import normalize_name, is_table, read_table_strict as read_table  # noqa: E402
 from utils._env import VALID_DATASETS  # noqa: E402
 from utils.target_utils import TARGET_COLUMNS, binary_attack_type  # noqa: E402
-
-
-TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".parquet", ".feather"}
 
 
 # Pipeline configuration constants. Edit these values to change this script.
@@ -45,27 +43,10 @@ def parse_args() -> argparse.Namespace:
         dataset=CONFIG_DATASET,
     )
 
-def normalize_name(value: str) -> str:
-    return str(value).strip().lower()
-
 
 def target_columns(columns: list[str]) -> list[str]:
     normalized_targets = {normalize_name(column) for column in TARGET_COLUMNS}
     return [column for column in columns if normalize_name(str(column)) in normalized_targets]
-
-
-def is_table(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in TABLE_SUFFIXES and not path.name.startswith(".")
-
-
-def read_table(path: Path) -> pd.DataFrame:
-    suffix = path.suffix.lower()
-    if suffix == ".parquet":
-        return pd.read_parquet(path)
-    if suffix == ".feather":
-        return pd.read_feather(path)
-    separator = "\t" if suffix == ".tsv" else None
-    return pd.read_csv(path, sep=separator, engine="python")
 
 
 def write_table(path: Path, table: pd.DataFrame) -> None:

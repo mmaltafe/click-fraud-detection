@@ -28,13 +28,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils._columns import CAMPAIGN_COLUMNS  # noqa: E402
+from utils._columns import CAMPAIGN_COLUMNS, normalize_name, is_table, read_table_strict as read_table  # noqa: E402
 from utils._env import VALID_DATASETS, MISSING, read_env_value  # noqa: E402
-from utils.target_utils import binary_target_series  # noqa: E402
+from utils.target_utils import binary_target_series, TARGET_COLUMNS  # noqa: E402
 
-
-TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".parquet", ".feather"}
-TARGET_COLUMNS = ("Attack_type", "attack_type")
 
 HEADER_ALIASES = {
     "accept": ("accept",),
@@ -97,10 +94,6 @@ def normalized_column_lookup(columns: list[str]) -> dict[str, str]:
     return lookup
 
 
-def normalize_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", str(value).strip().lower()).strip("_")
-
-
 def resolve_column(columns: list[str], canonical_name: str) -> str | None:
     lookup = normalized_column_lookup(columns)
     for alias in HEADER_ALIASES.get(canonical_name, (canonical_name,)):
@@ -126,21 +119,6 @@ def target_column(columns: list[str]) -> str | None:
         if normalized in lookup:
             return lookup[normalized]
     return None
-
-
-def is_table(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in TABLE_SUFFIXES and not path.name.startswith(".")
-
-
-def read_table(path: Path) -> pd.DataFrame:
-    suffix = path.suffix.lower()
-    if suffix == ".parquet":
-        return pd.read_parquet(path)
-    if suffix == ".feather":
-        return pd.read_feather(path)
-
-    separator = "\t" if suffix == ".tsv" else None
-    return pd.read_csv(path, sep=separator, engine="python")
 
 
 def raw_files_for_dataset(dataset: str, dataset_path: Path) -> list[tuple[Path, str | None, str | None]]:
